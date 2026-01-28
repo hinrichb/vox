@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Tauri
+/src-tauri/target/
+/src-tauri/binaries/whisper-*
+/src-tauri/resources/models/*.bin
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

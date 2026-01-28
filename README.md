@@ -1,36 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="Vox Logo" width="128" height="128">
+</p>
 
-## Getting Started
+<h1 align="center">Vox</h1>
 
-First, run the development server:
+<p align="center">
+  <strong>Voice to text, reimagined.</strong>
+</p>
 
+<p align="center">
+  A fast, native desktop app for speech recognition with AI-powered text processing.
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#building-from-source">Building</a> •
+  <a href="#license">License</a>
+</p>
+
+---
+
+## The Problem
+
+Dictating text on a computer is often cumbersome:
+
+- **Cloud services** are slow, expensive, and raise privacy concerns
+- **Built-in speech recognition** is unreliable and hard to activate
+- **Professional software** costs hundreds and is bloated with features
+- **No AI integration** — transcribed text still needs manual editing
+
+## The Solution
+
+**Vox** solves these problems with an elegant approach:
+
+1. **Global hotkey** — Press `Option+M` (Mac) or `Alt+M` (Windows) from anywhere
+2. **Local transcription** — Whisper.cpp runs completely offline on your machine
+3. **AI modes** — Automatic grammar correction, translation, or custom prompts
+4. **Instant clipboard** — Result is immediately ready to paste
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Global Hotkey** | Start/stop recording from any app |
+| **Offline Transcription** | Whisper.cpp — no cloud, no per-minute costs |
+| **Multi-Language** | Auto-detect or manually select (EN, DE, FR, ES, ...) |
+| **AI Modes** | Grammar fix, translation, or custom prompts |
+| **Statistics** | Track your recordings, words, and characters |
+| **Background App** | Runs quietly without cluttering your Dock |
+
+### Supported AI Models
+
+Via [OpenRouter](https://openrouter.ai):
+
+- GPT-4o / GPT-4o Mini
+- Claude 3.5 Sonnet
+- Gemini Flash 1.5
+- Llama 3.1 70B
+
+---
+
+## Installation
+
+### Download
+
+Download the latest release for your platform:
+
+| Platform | Download |
+|----------|----------|
+| **macOS** (Apple Silicon) | [Vox_x.x.x_aarch64.dmg](../../releases/latest) |
+| **macOS** (Intel) | [Vox_x.x.x_x64.dmg](../../releases/latest) |
+| **Windows** | [Vox_x.x.x_x64-setup.exe](../../releases/latest) |
+
+### First Launch (macOS)
+
+1. Open the `.dmg` file
+2. Drag **Vox** to your Applications folder
+3. Right-click and select "Open" (required for first launch)
+4. Grant microphone permission when prompted
+
+---
+
+## Usage
+
+### Basic Workflow
+
+1. Press **Option+M** (Mac) or **Alt+M** (Windows) to start recording
+2. Speak your text
+3. Press the hotkey again to transcribe
+4. Text is automatically copied to your clipboard
+5. Paste anywhere with **Cmd+V** / **Ctrl+V**
+
+### Keyboard Shortcuts
+
+| Action | macOS | Windows |
+|--------|-------|---------|
+| Start/Stop Recording | `Option + M` | `Alt + M` |
+| Cancel Recording | `ESC` | `ESC` |
+
+*The hotkey can be customized in Settings.*
+
+### AI Modes
+
+1. **Normal** — Pure transcription, no AI processing
+2. **Fix Grammar** — Corrects spelling and grammar mistakes
+3. **Translate to English** — Translates any language to English
+4. **Custom** — Create your own prompts for any text transformation
+
+> **Note:** AI modes require an [OpenRouter API key](https://openrouter.ai/keys). Normal mode works completely offline.
+
+---
+
+## Building from Source
+
+### Prerequisites
+
+- **Node.js** 18+ and **pnpm**
+- **Rust** (for Tauri)
+- **CMake** and C++ compiler (for Whisper.cpp)
+
+#### macOS
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+xcode-select --install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### Windows
+- Visual Studio Build Tools with C++ workload
+- Git
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build Steps
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/vox.git
+cd vox
 
-## Learn More
+# Install dependencies
+pnpm install
 
-To learn more about Next.js, take a look at the following resources:
+# Setup Whisper (compiles whisper.cpp and downloads the model)
+pnpm setup          # macOS/Linux
+pnpm setup:win      # Windows (PowerShell)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Development
+pnpm tauri dev
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Production build
+pnpm tauri build
+```
 
-## Deploy on Vercel
+Build output: `src-tauri/target/release/bundle/`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   React/Next.js Frontend                     │
+│           (Settings, Overlay UI, Audio Capture)              │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ IPC/Events
+┌──────────────────────────▼──────────────────────────────────┐
+│                 Tauri Runtime (Rust)                         │
+│     • Global Hotkey Handler                                  │
+│     • Window Management                                      │
+│     • Clipboard Integration                                  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+    ┌──────────┐    ┌──────────┐    ┌──────────┐
+    │ Whisper  │    │OpenRouter│    │  System  │
+    │   .cpp   │    │   API    │    │  (Mic,   │
+    │ (local)  │    │(optional)│    │Clipboard)│
+    └──────────┘    └──────────┘    └──────────┘
+```
+
+### Tech Stack
+
+- **Frontend:** React 19, Next.js 16, Tailwind CSS
+- **Backend:** Tauri 2, Rust
+- **Transcription:** Whisper.cpp (ggml-base model)
+- **AI:** OpenRouter API
+
+---
+
+## License
+
+MIT
+
+---
+
+<p align="center">
+  <sub>Built with Tauri, React, Next.js, and Whisper.cpp</sub>
+</p>

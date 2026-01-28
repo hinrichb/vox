@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capabilities",
+  "identifier": "default",
+  "description": "Default capabilities for Everlast",
+  "windows": ["main", "overlay"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "os:default",
+    "macos-permissions:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
+    "shell:default",
+    "shell:allow-spawn",
+    "shell:allow-execute",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/whisper",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    "fs:default",
+    "fs:allow-read",
+    "fs:allow-write",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    "fs:allow-app-write",
+    "fs:allow-temp-write",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$APPDATA/**",
+        "$APPCACHE/**",
+        "$APPCONFIG/**",
+        "$APPLOG/**",
+        "$TEMP/**",
+        "$RESOURCE/**",
+        "/tmp/**",
+        "/var/folders/**",
+        "C:/Users/*/AppData/Local/Temp/**"
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "binaries/whisper",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
+  ]
+}
