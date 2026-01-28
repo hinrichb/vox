@@ -72,9 +72,9 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| **macOS** (Apple Silicon) | [Vox_x.x.x_aarch64.dmg](../../releases/latest) |
-| **macOS** (Intel) | [Vox_x.x.x_x64.dmg](../../releases/latest) |
-| **Windows** | [Vox_x.x.x_x64-setup.exe](../../releases/latest) |
+| **macOS** (Apple Silicon) | [Download DMG](https://github.com/hinrichb/vox/releases/latest/download/Vox_0.1.0_aarch64.dmg) |
+| **macOS** (Intel) | Coming soon |
+| **Windows** | Coming soon |
 
 ### First Launch (macOS)
 
