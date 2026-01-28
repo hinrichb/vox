@@ -136,7 +136,7 @@ xcode-select --install
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/vox.git
+git clone https://github.com/hinrichb/vox.git
 cd vox
 
 # Install dependencies
