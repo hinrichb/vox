@@ -109,7 +109,6 @@ fn change_hotkey(app: tauri::AppHandle, hotkey: HotkeyConfig) -> Result<(), Stri
     // Update state
     *current = new_shortcut;
 
-    println!("Hotkey changed to: {:?} + {}", hotkey.modifiers, hotkey.key);
     Ok(())
 }
 
@@ -193,7 +192,6 @@ pub fn run() {
             // Store the current shortcut in state
             app.manage(CurrentShortcut(Mutex::new(shortcut)));
 
-            println!("Global shortcut registered: Alt+M");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![copy_to_clipboard, close_overlay, change_hotkey])

@@ -2,7 +2,7 @@
 name = "vox"
 version = "0.1.0"
 description = "Voice-to-Text Desktop App"
-authors = ["you"]
+authors = ["Hinrich Bomsdorf"]
 edition = "2021"
 
 [lib]

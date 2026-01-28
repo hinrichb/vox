@@ -10,7 +10,6 @@ type RecordingState = "idle" | "recording" | "transcribing" | "processing" | "er
 export default function Overlay() {
   const [state, setState] = useState<RecordingState>("idle");
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const [debugInfo, setDebugInfo] = useState<string>("Initializing...");
   const [barHeights, setBarHeights] = useState<number[]>(Array(20).fill(8));
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -231,22 +230,13 @@ export default function Overlay() {
 
   const startRecording = useCallback(async () => {
     audioChunksRef.current = [];
-    setDebugInfo("Checking mediaDevices...");
 
     // Check if mediaDevices is available
-    if (!navigator.mediaDevices) {
-      setErrorMsg("navigator.mediaDevices not available");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setErrorMsg("Microphone not available");
       setState("error");
       return;
     }
-
-    if (!navigator.mediaDevices.getUserMedia) {
-      setErrorMsg("getUserMedia not available");
-      setState("error");
-      return;
-    }
-
-    setDebugInfo("Requesting microphone...");
 
     // Try to request permission via Tauri plugin first (macOS only)
     try {
@@ -254,18 +244,14 @@ export default function Overlay() {
       const os = await platform();
       if (os === "macos") {
         const { requestMicrophonePermission } = await import("tauri-plugin-macos-permissions-api");
-        setDebugInfo("Calling requestMicrophonePermission...");
         await requestMicrophonePermission();
-        setDebugInfo("Permission requested, getting stream...");
       }
-    } catch (e) {
-      setDebugInfo("Plugin not available, trying direct...");
+    } catch {
+      // Plugin not available, continue with direct access
     }
 
     try {
-      setDebugInfo("Calling getUserMedia...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setDebugInfo("Got stream, setting up audio...");
       streamRef.current = stream;
 
       const audioContext = new AudioContext();
@@ -287,7 +273,6 @@ export default function Overlay() {
       processor.connect(audioContext.destination);
       processorRef.current = processor;
 
-      setDebugInfo("");
       setState("recording");
       updateWaveform();
     } catch (err) {
@@ -374,7 +359,7 @@ export default function Overlay() {
         }}
       >
         {state === "idle" && (
-          <span className="text-sm text-gray-500">{debugInfo || "Starting..."}</span>
+          <span className="text-sm text-gray-500">Starting...</span>
         )}
         {state === "recording" && (
           <div className="flex items-center justify-center gap-[3px]">

@@ -68,8 +68,8 @@ export default function SettingsPage() {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("change_hotkey", { hotkey: updates.hotkey });
-      } catch (e) {
-        console.error("Failed to change hotkey:", e);
+      } catch {
+        // Hotkey change failed silently
       }
     }
   };
