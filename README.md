@@ -80,8 +80,14 @@ Download the latest release for your platform:
 
 1. Open the `.dmg` file
 2. Drag **Vox** to your Applications folder
-3. Right-click and select "Open" (required for first launch)
-4. Grant microphone permission when prompted
+3. **Important:** Open Terminal and run:
+   ```bash
+   xattr -cr /Applications/Vox.app
+   ```
+4. Double-click to open Vox
+5. Grant microphone permission when prompted
+
+> **Note:** The `xattr` command is required because the app is not signed with an Apple Developer certificate. This removes the macOS quarantine flag that would otherwise block the app.
 
 ---
 
