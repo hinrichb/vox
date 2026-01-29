@@ -723,7 +723,7 @@ export default function SettingsPage() {
         {/* Footer */}
         <div style={{ textAlign: "center", padding: "20px 0" }}>
           <p style={{ fontSize: "12px", color: "#bbb", margin: 0 }}>
-            Vox v0.1.0
+            Vox v0.1.1
           </p>
         </div>
       </div>

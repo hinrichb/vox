@@ -1,6 +1,6 @@
 [package]
 name = "vox"
-version = "0.1.0"
+version = "0.1.1"
 description = "Voice-to-Text Desktop App"
 authors = ["Hinrich Bomsdorf"]
 edition = "2021"
