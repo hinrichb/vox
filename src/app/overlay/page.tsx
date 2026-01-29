@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { copyToClipboard, transcribeAudio } from "@/lib/tauri";
-import { getSettings, getSelectedMode, updateStats } from "@/lib/storage";
+import { getSettings, getSelectedMode, getMatchingTriggerWords, updateStats } from "@/lib/storage";
 import { processWithAI } from "@/lib/openrouter";
 
 type RecordingState = "idle" | "recording" | "transcribing" | "processing" | "error";
@@ -191,9 +191,10 @@ export default function Overlay() {
       // Step 2: Check if we need AI processing
       const settings = getSettings();
       const selectedMode = getSelectedMode(settings);
+      const matchingTriggers = getMatchingTriggerWords(transcript, settings.triggerWords || []);
 
-      // If normal mode or no prompt, just copy transcript
-      if (selectedMode.id === "normal" || !selectedMode.prompt) {
+      // If normal mode and no trigger words, just copy transcript
+      if ((selectedMode.id === "normal" || !selectedMode.prompt) && matchingTriggers.length === 0) {
         await copyToClipboard(transcript.trim());
         updateStats(transcript.trim());
         closeOverlay();
@@ -211,9 +212,19 @@ export default function Overlay() {
 
       setState("processing");
 
+      // Build combined prompt from mode + trigger words
+      const prompts: string[] = [];
+      if (selectedMode.prompt) {
+        prompts.push(selectedMode.prompt);
+      }
+      for (const trigger of matchingTriggers) {
+        prompts.push(trigger.prompt);
+      }
+      const combinedPrompt = prompts.join('\n\nAdditionally: ');
+
       const processedText = await processWithAI(
         transcript.trim(),
-        selectedMode.prompt,
+        combinedPrompt,
         settings.selectedModel,
         settings.openRouterApiKey
       );

@@ -2,6 +2,23 @@ use tauri::{Emitter, Manager, WebviewWindowBuilder, WebviewUrl};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use std::sync::Mutex;
 
+#[cfg(target_os = "macos")]
+use objc2_app_kit::NSApplication;
+#[cfg(target_os = "macos")]
+use objc2_foundation::MainThreadMarker;
+
+#[derive(Default)]
+struct MainWindowState {
+    was_minimized: bool,
+    was_visible: bool,
+    was_focused: bool,
+}
+
+struct AppState {
+    current_shortcut: Mutex<Shortcut>,
+    main_window_state: Mutex<MainWindowState>,
+}
+
 #[tauri::command]
 fn copy_to_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> {
     use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -12,12 +29,50 @@ fn copy_to_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> 
 
 #[tauri::command]
 fn close_overlay(app: tauri::AppHandle) {
+    let should_deactivate: bool;
+
+    // Check main window state to decide if we need to deactivate the app
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(window_state) = state.main_window_state.lock() {
+            if let Some(main_window) = app.get_webview_window("main") {
+                if window_state.was_minimized {
+                    let _ = main_window.minimize();
+                    should_deactivate = false;
+                } else if !window_state.was_visible {
+                    let _ = main_window.hide();
+                    should_deactivate = false;
+                } else if !window_state.was_focused {
+                    // Window was visible but not focused (behind other windows)
+                    // We'll deactivate the app to return focus to the previous app
+                    should_deactivate = true;
+                } else {
+                    should_deactivate = false;
+                }
+            } else {
+                should_deactivate = false;
+            }
+        } else {
+            should_deactivate = false;
+        }
+    } else {
+        should_deactivate = false;
+    }
+
+    // Close the overlay
     if let Some(window) = app.get_webview_window("overlay") {
         let _ = window.close();
     }
-}
 
-struct CurrentShortcut(Mutex<Shortcut>);
+    // Deactivate app on macOS to return focus to previously active app
+    #[cfg(target_os = "macos")]
+    if should_deactivate {
+        if let Some(mtm) = MainThreadMarker::new() {
+            let ns_app = NSApplication::sharedApplication(mtm);
+            ns_app.hide(None);
+            ns_app.unhideWithoutActivation();
+        }
+    }
+}
 
 #[derive(serde::Deserialize)]
 struct HotkeyConfig {
@@ -95,8 +150,8 @@ fn change_hotkey(app: tauri::AppHandle, hotkey: HotkeyConfig) -> Result<(), Stri
     let new_shortcut = parse_hotkey(&hotkey).ok_or("Invalid hotkey")?;
 
     // Get the current shortcut from state
-    let state = app.state::<CurrentShortcut>();
-    let mut current = state.0.lock().map_err(|e| e.to_string())?;
+    let state = app.state::<AppState>();
+    let mut current = state.current_shortcut.lock().map_err(|e| e.to_string())?;
 
     // Unregister old shortcut
     let _ = app.global_shortcut().unregister(*current);
@@ -132,6 +187,20 @@ fn build_global_shortcut_plugin() -> impl tauri::plugin::Plugin<tauri::Wry> {
                         .map(|w| w.is_visible().unwrap_or(false))
                         .unwrap_or(false);
 
+                    let main_was_focused = app
+                        .get_webview_window("main")
+                        .map(|w| w.is_focused().unwrap_or(false))
+                        .unwrap_or(false);
+
+                    // Save main window state for later restoration
+                    if let Some(state) = app.try_state::<AppState>() {
+                        if let Ok(mut window_state) = state.main_window_state.lock() {
+                            window_state.was_minimized = main_was_minimized;
+                            window_state.was_visible = main_was_visible;
+                            window_state.was_focused = main_was_focused;
+                        }
+                    }
+
                     // Create overlay window
                     let _ = WebviewWindowBuilder::new(
                         app,
@@ -150,7 +219,7 @@ fn build_global_shortcut_plugin() -> impl tauri::plugin::Plugin<tauri::Wry> {
                     .skip_taskbar(true)
                     .build();
 
-                    // Restore main window state
+                    // Restore main window state immediately after creating overlay
                     if let Some(main_window) = app.get_webview_window("main") {
                         if main_was_minimized {
                             let _ = main_window.minimize();
@@ -189,8 +258,11 @@ pub fn run() {
 
             app.global_shortcut().register(shortcut)?;
 
-            // Store the current shortcut in state
-            app.manage(CurrentShortcut(Mutex::new(shortcut)));
+            // Store app state
+            app.manage(AppState {
+                current_shortcut: Mutex::new(shortcut),
+                main_window_state: Mutex::new(MainWindowState::default()),
+            });
 
             Ok(())
         })

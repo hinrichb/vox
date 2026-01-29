@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Mode, AVAILABLE_MODELS, LANGUAGES, DEFAULT_SETTINGS, HotkeyConfig } from "@/types/settings";
+import { Settings, Mode, TriggerWord, AVAILABLE_MODELS, LANGUAGES, DEFAULT_SETTINGS, HotkeyConfig } from "@/types/settings";
 import { getSettings, saveSettings } from "@/lib/storage";
 
 export default function SettingsPage() {
@@ -12,6 +12,10 @@ export default function SettingsPage() {
   const [newModePrompt, setNewModePrompt] = useState("");
   const [showAddMode, setShowAddMode] = useState(false);
   const [recordingShortcut, setRecordingShortcut] = useState(false);
+  const [showAddTrigger, setShowAddTrigger] = useState(false);
+  const [newTriggerWord, setNewTriggerWord] = useState("");
+  const [newTriggerPrompt, setNewTriggerPrompt] = useState("");
+  const [editingTrigger, setEditingTrigger] = useState<TriggerWord | null>(null);
 
   useEffect(() => {
     setSettings(getSettings());
@@ -95,6 +99,41 @@ export default function SettingsPage() {
     setNewModeName("");
     setNewModePrompt("");
     setShowAddMode(false);
+  };
+
+  const toggleTrigger = (triggerId: string) => {
+    const newTriggers = (settings.triggerWords || []).map(t =>
+      t.id === triggerId ? { ...t, enabled: !t.enabled } : t
+    );
+    updateSettings({ triggerWords: newTriggers });
+  };
+
+  const deleteTrigger = (triggerId: string) => {
+    const newTriggers = (settings.triggerWords || []).filter(t => t.id !== triggerId);
+    updateSettings({ triggerWords: newTriggers });
+    setEditingTrigger(null);
+  };
+
+  const addTrigger = () => {
+    if (!newTriggerWord.trim() || !newTriggerPrompt.trim()) return;
+    const id = `trigger-${Date.now()}`;
+    const newTrigger: TriggerWord = {
+      id,
+      word: newTriggerWord.trim().toLowerCase(),
+      prompt: newTriggerPrompt.trim(),
+      enabled: true
+    };
+    updateSettings({ triggerWords: [...(settings.triggerWords || []), newTrigger] });
+    setNewTriggerWord("");
+    setNewTriggerPrompt("");
+    setShowAddTrigger(false);
+  };
+
+  const updateTrigger = (triggerId: string, updates: Partial<TriggerWord>) => {
+    const newTriggers = (settings.triggerWords || []).map(t =>
+      t.id === triggerId ? { ...t, ...updates } : t
+    );
+    updateSettings({ triggerWords: newTriggers });
   };
 
   const selectedMode = settings.modes.find(m => m.id === settings.selectedModeId) || settings.modes[0];
@@ -356,6 +395,164 @@ export default function SettingsPage() {
               {selectedMode.prompt}
             </div>
           )}
+        </div>
+
+        {/* Trigger Words */}
+        <div style={{
+          background: "white",
+          borderRadius: "24px",
+          padding: "28px",
+          marginBottom: "24px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          border: settings.openRouterApiKey ? "1px solid rgba(0,0,0,0.04)" : "1px solid rgba(239,68,68,0.3)",
+        }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}>
+            <div>
+              <h2 style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#888",
+                margin: 0,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Trigger Words
+              </h2>
+              <p style={{
+                fontSize: "12px",
+                color: settings.openRouterApiKey ? "#aaa" : "#ef4444",
+                margin: "6px 0 0 0",
+              }}>
+                {settings.openRouterApiKey
+                  ? "Auto-apply prompts when words are detected (works in all modes)"
+                  : "Requires API key to work"
+                }
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddTrigger(true)}
+              style={{
+                background: "linear-gradient(135deg, #1a1a1a 0%, #333 100%)",
+                border: "none",
+                color: "white",
+                fontSize: "12px",
+                fontWeight: "600",
+                padding: "10px 20px",
+                borderRadius: "100px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.2s",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {(settings.triggerWords || []).map(trigger => (
+              <div
+                key={trigger.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "14px 18px",
+                  background: trigger.enabled ? "#f8f8f8" : "#fafafa",
+                  borderRadius: "14px",
+                  opacity: trigger.enabled ? 1 : 0.6,
+                }}
+              >
+                <button
+                  onClick={() => toggleTrigger(trigger.id)}
+                  style={{
+                    width: "42px",
+                    height: "24px",
+                    borderRadius: "12px",
+                    border: "none",
+                    background: trigger.enabled
+                      ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                      : "#ddd",
+                    cursor: "pointer",
+                    position: "relative",
+                    transition: "all 0.2s",
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: "18px",
+                    height: "18px",
+                    borderRadius: "50%",
+                    background: "white",
+                    position: "absolute",
+                    top: "3px",
+                    left: trigger.enabled ? "21px" : "3px",
+                    transition: "all 0.2s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }} />
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#1a1a1a",
+                    marginBottom: "2px",
+                  }}>
+                    &ldquo;{trigger.word}&rdquo;
+                  </div>
+                  <div style={{
+                    fontSize: "12px",
+                    color: "#888",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {trigger.prompt}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingTrigger(trigger)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "rgba(0,0,0,0.05)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+            {(settings.triggerWords || []).length === 0 && (
+              <div style={{
+                textAlign: "center",
+                padding: "24px",
+                color: "#aaa",
+                fontSize: "13px",
+              }}>
+                No trigger words yet. Add one to get started.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Settings Cards */}
@@ -788,6 +985,282 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => setEditingMode(null)}
+                style={{
+                  padding: "14px 32px",
+                  borderRadius: "100px",
+                  border: "none",
+                  background: "linear-gradient(135deg, #1a1a1a 0%, #333 100%)",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Trigger Modal */}
+      {showAddTrigger && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 100
+          }}
+          onClick={() => { setShowAddTrigger(false); setNewTriggerWord(""); setNewTriggerPrompt(""); }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "28px",
+              padding: "32px",
+              width: "100%",
+              maxWidth: "440px",
+              boxShadow: "0 24px 48px -12px rgba(0, 0, 0, 0.25)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontSize: "22px",
+              fontWeight: "700",
+              margin: "0 0 28px 0",
+              letterSpacing: "-0.3px",
+            }}>
+              New Trigger Word
+            </h3>
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#888",
+                display: "block",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Trigger Word
+              </label>
+              <input
+                type="text"
+                value={newTriggerWord}
+                onChange={e => setNewTriggerWord(e.target.value)}
+                placeholder="e.g., email, bullet points, formal"
+                style={{
+                  width: "100%",
+                  padding: "16px 20px",
+                  fontSize: "15px",
+                  border: "none",
+                  borderRadius: "14px",
+                  outline: "none",
+                  backgroundColor: "#f5f5f5",
+                  boxSizing: "border-box",
+                }}
+                autoFocus
+              />
+            </div>
+            <div style={{ marginBottom: "28px" }}>
+              <label style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#888",
+                display: "block",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                AI Prompt
+              </label>
+              <textarea
+                value={newTriggerPrompt}
+                onChange={e => setNewTriggerPrompt(e.target.value)}
+                placeholder="e.g., Format this as a professional email..."
+                style={{
+                  width: "100%",
+                  padding: "16px 20px",
+                  fontSize: "15px",
+                  border: "none",
+                  borderRadius: "14px",
+                  outline: "none",
+                  backgroundColor: "#f5f5f5",
+                  minHeight: "120px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  lineHeight: "1.5",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button
+                onClick={() => { setShowAddTrigger(false); setNewTriggerWord(""); setNewTriggerPrompt(""); }}
+                style={{
+                  padding: "14px 28px",
+                  borderRadius: "100px",
+                  border: "none",
+                  background: "#f5f5f5",
+                  color: "#666",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addTrigger}
+                disabled={!newTriggerWord.trim() || !newTriggerPrompt.trim()}
+                style={{
+                  padding: "14px 32px",
+                  borderRadius: "100px",
+                  border: "none",
+                  background: (newTriggerWord.trim() && newTriggerPrompt.trim())
+                    ? "linear-gradient(135deg, #1a1a1a 0%, #333 100%)"
+                    : "#e5e5e5",
+                  color: (newTriggerWord.trim() && newTriggerPrompt.trim()) ? "white" : "#999",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: (newTriggerWord.trim() && newTriggerPrompt.trim()) ? "pointer" : "default",
+                  transition: "all 0.2s",
+                }}
+              >
+                Add Trigger
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Trigger Modal */}
+      {editingTrigger && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 100
+          }}
+          onClick={() => setEditingTrigger(null)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "28px",
+              padding: "32px",
+              width: "100%",
+              maxWidth: "440px",
+              boxShadow: "0 24px 48px -12px rgba(0, 0, 0, 0.25)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontSize: "22px",
+              fontWeight: "700",
+              margin: "0 0 28px 0",
+              letterSpacing: "-0.3px",
+            }}>
+              Edit Trigger Word
+            </h3>
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#888",
+                display: "block",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Trigger Word
+              </label>
+              <input
+                type="text"
+                value={editingTrigger.word}
+                onChange={e => {
+                  setEditingTrigger({ ...editingTrigger, word: e.target.value });
+                  updateTrigger(editingTrigger.id, { word: e.target.value.toLowerCase() });
+                }}
+                style={{
+                  width: "100%",
+                  padding: "16px 20px",
+                  fontSize: "15px",
+                  border: "none",
+                  borderRadius: "14px",
+                  outline: "none",
+                  backgroundColor: "#f5f5f5",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: "28px" }}>
+              <label style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#888",
+                display: "block",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                AI Prompt
+              </label>
+              <textarea
+                value={editingTrigger.prompt}
+                onChange={e => {
+                  setEditingTrigger({ ...editingTrigger, prompt: e.target.value });
+                  updateTrigger(editingTrigger.id, { prompt: e.target.value });
+                }}
+                style={{
+                  width: "100%",
+                  padding: "16px 20px",
+                  fontSize: "15px",
+                  border: "none",
+                  borderRadius: "14px",
+                  outline: "none",
+                  backgroundColor: "#f5f5f5",
+                  minHeight: "120px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  lineHeight: "1.5",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                onClick={() => deleteTrigger(editingTrigger.id)}
+                style={{
+                  padding: "14px 24px",
+                  borderRadius: "100px",
+                  border: "none",
+                  background: "#fef2f2",
+                  color: "#ef4444",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setEditingTrigger(null)}
                 style={{
                   padding: "14px 32px",
                   borderRadius: "100px",

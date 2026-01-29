@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, DEFAULT_SETTINGS } from "@/types/settings";
+import { Settings, TriggerWord, DEFAULT_SETTINGS } from "@/types/settings";
 
 const STORAGE_KEY = "everlast_settings";
 
@@ -18,6 +18,7 @@ export function getSettings(): Settings {
       ...DEFAULT_SETTINGS,
       ...parsed,
       modes: parsed.modes?.length ? parsed.modes : DEFAULT_SETTINGS.modes,
+      triggerWords: parsed.triggerWords ?? DEFAULT_SETTINGS.triggerWords,
       // Ensure hotkey is a proper object (migrate from old string format)
       hotkey: (parsed.hotkey && typeof parsed.hotkey === 'object' && 'label' in parsed.hotkey)
         ? parsed.hotkey
@@ -56,4 +57,9 @@ export function updateStats(text: string): void {
   };
 
   saveSettings(settings);
+}
+
+export function getMatchingTriggerWords(text: string, triggerWords: TriggerWord[]): TriggerWord[] {
+  const lowerText = text.toLowerCase();
+  return triggerWords.filter(tw => tw.enabled && lowerText.includes(tw.word.toLowerCase()));
 }

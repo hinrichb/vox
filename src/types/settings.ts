@@ -5,6 +5,13 @@ export interface Mode {
   isDefault?: boolean;
 }
 
+export interface TriggerWord {
+  id: string;
+  word: string;
+  prompt: string;
+  enabled: boolean;
+}
+
 export interface Stats {
   totalWords: number;
   totalRecordings: number;
@@ -17,6 +24,7 @@ export interface Settings {
   selectedModel: string;
   selectedModeId: string;
   modes: Mode[];
+  triggerWords: TriggerWord[];
   hotkey: HotkeyConfig;
   stats: Stats;
 }
@@ -41,12 +49,19 @@ export const DEFAULT_MODES: Mode[] = [
   { id: 'translate-en', name: 'Translate to English', prompt: 'Translate the following text to English. Return only the translation, nothing else.' },
 ];
 
+export const DEFAULT_TRIGGER_WORDS: TriggerWord[] = [
+  { id: 'email', word: 'email', prompt: 'Format this as a professional email with appropriate greeting and sign-off.', enabled: true },
+  { id: 'bullet', word: 'bullet points', prompt: 'Format this as a clear bullet point list.', enabled: true },
+  { id: 'summary', word: 'summarize', prompt: 'Summarize this text concisely in 2-3 sentences.', enabled: true },
+];
+
 export const DEFAULT_SETTINGS: Settings = {
   language: 'auto',
   openRouterApiKey: '',
   selectedModel: 'openai/gpt-4o-mini',
   selectedModeId: 'normal',
   modes: DEFAULT_MODES,
+  triggerWords: DEFAULT_TRIGGER_WORDS,
   hotkey: { modifiers: ['Alt'], key: 'M', label: 'Option + M' },
   stats: { totalWords: 0, totalRecordings: 0, totalCharacters: 0 },
 };
