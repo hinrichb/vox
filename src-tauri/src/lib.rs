@@ -3,9 +3,8 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 use std::sync::Mutex;
 
 #[cfg(target_os = "macos")]
-use objc2_app_kit::NSApplication;
-#[cfg(target_os = "macos")]
-use objc2_foundation::MainThreadMarker;
+#[macro_use]
+extern crate objc;
 
 #[derive(Default)]
 struct MainWindowState {
@@ -29,47 +28,35 @@ fn copy_to_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> 
 
 #[tauri::command]
 fn close_overlay(app: tauri::AppHandle) {
-    let should_deactivate: bool;
-
-    // Check main window state to decide if we need to deactivate the app
-    if let Some(state) = app.try_state::<AppState>() {
-        if let Ok(window_state) = state.main_window_state.lock() {
-            if let Some(main_window) = app.get_webview_window("main") {
-                if window_state.was_minimized {
-                    let _ = main_window.minimize();
-                    should_deactivate = false;
-                } else if !window_state.was_visible {
-                    let _ = main_window.hide();
-                    should_deactivate = false;
-                } else if !window_state.was_focused {
-                    // Window was visible but not focused (behind other windows)
-                    // We'll deactivate the app to return focus to the previous app
-                    should_deactivate = true;
-                } else {
-                    should_deactivate = false;
-                }
-            } else {
-                should_deactivate = false;
-            }
+    // Check if main window was NOT focused (either minimized or behind other windows)
+    let should_hide_app = if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(ws) = state.main_window_state.lock() {
+            !ws.was_focused
         } else {
-            should_deactivate = false;
+            false
         }
     } else {
-        should_deactivate = false;
-    }
+        false
+    };
 
     // Close the overlay
     if let Some(window) = app.get_webview_window("overlay") {
         let _ = window.close();
     }
 
-    // Deactivate app on macOS to return focus to previously active app
+    // On macOS, if the main window wasn't focused before,
+    // hide the app to return focus to the previous app.
+    // User can click dock icon to show the app when needed.
     #[cfg(target_os = "macos")]
-    if should_deactivate {
-        if let Some(mtm) = MainThreadMarker::new() {
-            let ns_app = NSApplication::sharedApplication(mtm);
-            ns_app.hide(None);
-            ns_app.unhideWithoutActivation();
+    if should_hide_app {
+        use objc::runtime::Class;
+        unsafe {
+            if let Some(cls) = Class::get("NSApplication") {
+                let ns_app: cocoa::base::id = msg_send![cls, sharedApplication];
+                if !ns_app.is_null() {
+                    let _: () = msg_send![ns_app, hide: ns_app];
+                }
+            }
         }
     }
 }

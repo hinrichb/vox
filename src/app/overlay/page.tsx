@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { copyToClipboard, transcribeAudio } from "@/lib/tauri";
-import { getSettings, getSelectedMode, getMatchingTriggerWords, updateStats } from "@/lib/storage";
+import { getSettings, getSelectedMode, updateStats } from "@/lib/storage";
 import { processWithAI } from "@/lib/openrouter";
 
 type RecordingState = "idle" | "recording" | "transcribing" | "processing" | "error";
@@ -191,18 +191,19 @@ export default function Overlay() {
       // Step 2: Check if we need AI processing
       const settings = getSettings();
       const selectedMode = getSelectedMode(settings);
-      const matchingTriggers = getMatchingTriggerWords(transcript, settings.triggerWords || []);
+      const enabledTriggers = (settings.triggerWords || []).filter(t => t.enabled);
+      const hasApiKey = !!settings.openRouterApiKey;
+      const hasModePrompt = selectedMode.id !== "normal" && !!selectedMode.prompt;
 
-      // If normal mode and no trigger words, just copy transcript
-      if ((selectedMode.id === "normal" || !selectedMode.prompt) && matchingTriggers.length === 0) {
+      // If no AI processing needed (no mode, no triggers, or no API key)
+      if (!hasModePrompt && enabledTriggers.length === 0) {
         await copyToClipboard(transcript.trim());
         updateStats(transcript.trim());
         closeOverlay();
         return;
       }
 
-      // Step 3: Process with AI
-      if (!settings.openRouterApiKey) {
+      if (!hasApiKey) {
         // No API key, just copy transcript
         await copyToClipboard(transcript.trim());
         updateStats(transcript.trim());
@@ -212,15 +213,40 @@ export default function Overlay() {
 
       setState("processing");
 
-      // Build combined prompt from mode + trigger words
-      const prompts: string[] = [];
-      if (selectedMode.prompt) {
-        prompts.push(selectedMode.prompt);
+      // Build smart prompt that lets AI detect trigger word variations + context
+      let combinedPrompt = '';
+
+      if (enabledTriggers.length > 0) {
+        // Build trigger word instructions - AI will detect variations intelligently
+        const triggerInstructions = enabledTriggers.map(t => {
+          return `• "${t.word}" (and similar variations like abbreviations, alternate spellings, translations): ${t.prompt}`;
+        }).join('\n');
+
+        const triggerPrompt = `TRIGGER WORD DETECTION:
+Analyze if the user is using any of these trigger words as a COMMAND to format their text. Be smart about detecting variations (e.g., "email"/"e-mail"/"mail"/"E-Mail", "bullet points"/"bullets"/"list", etc.).
+
+Trigger words and their actions:
+${triggerInstructions}
+
+IMPORTANT RULES:
+1. Only apply a trigger if the word is clearly used as a formatting COMMAND, not just mentioned in the content
+2. Command indicators: trigger word at the start, followed by colon, preceded by "make this", "format as", "write", etc.
+3. If the trigger word is naturally part of the content (e.g., "send me your email address"), do NOT apply the trigger
+4. If a trigger is applied, remove the trigger phrase from the output
+5. Keep the same language as the input
+6. Fix grammar and spelling in any case
+
+Return only the processed text, nothing else.`;
+
+        if (hasModePrompt) {
+          combinedPrompt = `${selectedMode.prompt}\n\n${triggerPrompt}`;
+        } else {
+          combinedPrompt = triggerPrompt;
+        }
+      } else {
+        // Only mode prompt, no triggers
+        combinedPrompt = selectedMode.prompt;
       }
-      for (const trigger of matchingTriggers) {
-        prompts.push(trigger.prompt);
-      }
-      const combinedPrompt = prompts.join('\n\nAdditionally: ');
 
       const processedText = await processWithAI(
         transcript.trim(),

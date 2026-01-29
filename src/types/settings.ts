@@ -50,9 +50,24 @@ export const DEFAULT_MODES: Mode[] = [
 ];
 
 export const DEFAULT_TRIGGER_WORDS: TriggerWord[] = [
-  { id: 'email', word: 'email', prompt: 'Format this as a professional email with appropriate greeting and sign-off.', enabled: true },
-  { id: 'bullet', word: 'bullet points', prompt: 'Format this as a clear bullet point list.', enabled: true },
-  { id: 'summary', word: 'summarize', prompt: 'Summarize this text concisely in 2-3 sentences.', enabled: true },
+  {
+    id: 'email',
+    word: 'email',
+    prompt: 'Format as a professional email with appropriate greeting and sign-off.',
+    enabled: true
+  },
+  {
+    id: 'bullet',
+    word: 'bullet points',
+    prompt: 'Format as a clean bullet point list.',
+    enabled: true
+  },
+  {
+    id: 'summary',
+    word: 'summarize',
+    prompt: 'Summarize concisely in 2-3 sentences.',
+    enabled: true
+  },
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
